@@ -25,7 +25,9 @@
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
+#include <linux/i2c.h>
 #include <linux/mfd/stmpe.h>
+#include <linux/input/ft6x06_ts.h>
 #include <mach/irqs.h>
 
 #include "fbtft.h"
@@ -63,7 +65,9 @@ static void __iomem *gpio_reg;
 
 #define MAX_DEVS 8
 static struct spi_device *spi_devices[MAX_DEVS];
+static struct i2c_client *i2c_devices[MAX_DEVS];
 static int spi_device_count;
+static int i2c_device_count;
 struct platform_device *p_device;
 
 static char *name;
@@ -171,6 +175,8 @@ struct gpio_setting {
 struct fbtft_device_display {
 	char *name;
 	struct spi_board_info *spi;
+	struct i2c_board_info *i2c;
+	int i2c_busnum;
 	struct platform_device *pdev;
 
 	/*
@@ -470,6 +476,46 @@ static struct fbtft_device_display displays[] = {
 	}, {
 		/* LCD component of adafruit touchscreen */
 		.name = "adafruitts",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ili9340",
+			.max_speed_hz = 16000000,
+			.mode = SPI_MODE_0,
+			.chip_select = 0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "dc", 25 },
+					{},
+				},
+			}
+		}
+	}, {
+
+		/* Touch device spi-half of adafruit touchscreen */
+		.name = "adafruitct",
+		.i2c = &(struct i2c_board_info) {
+			I2C_BOARD_INFO("ft6x06_ts", 0x38),
+			.platform_data = &(struct ft6x06_platform_data) {
+				.irq_gpio = 24,
+				.reset_gpio = -1,
+			},
+		},
+		.i2c_busnum = 1,
+		.is_support = 1,
+		.gpio_settings = (struct gpio_setting []) {
+			{
+				.gpio = 24,
+				.pull = pull_up,
+			}
+		},
+		.gpio_num_settings = 1,
+	}, {
+		/* LCD component of adafruit capacitive touchscreen */
+		.name = "adafruitct",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ili9340",
 			.max_speed_hz = 16000000,
@@ -1270,10 +1316,26 @@ static int spi_device_found(struct device *dev, void *data)
 	return 0;
 }
 
+static int i2c_device_found(struct device *dev, void *data)
+{
+	struct i2c_client *i2c = container_of(dev, struct i2c_client, dev);
+
+	pr_info(DRVNAME":      %s %s  addr %d  IRQ %d\n",
+		i2c->name, dev_name(dev), i2c->addr, i2c->irq);
+
+	return 0;
+}
+
 static void pr_spi_devices(void)
 {
 	pr_info(DRVNAME":  SPI devices registered:\n");
 	bus_for_each_dev(&spi_bus_type, NULL, NULL, spi_device_found);
+}
+
+static void pr_i2c_devices(void)
+{
+	pr_info(DRVNAME":  I2C devices registered:\n");
+	bus_for_each_dev(&i2c_bus_type, NULL, NULL, i2c_device_found);
 }
 
 static int p_device_found(struct device *dev, void *data)
@@ -1310,6 +1372,20 @@ static void fbtft_device_spi_delete(struct spi_master *master, unsigned cs)
 	}
 }
 
+static void fbtft_device_i2c_delete(struct i2c_adapter *adapter, unsigned addr)
+{
+	struct device *dev;
+	char str[32];
+
+	snprintf(str, sizeof(str), "%s.%u", dev_name(&adapter->dev), addr);
+
+	dev = bus_find_device_by_name(&i2c_bus_type, NULL, str);
+	if (dev) {
+		pr_err(DRVNAME": Deleting %s (%s)\n", str, dev_name(dev));
+		device_del(dev);
+	}
+}
+
 static int fbtft_device_spi_device_register(struct spi_board_info *spi)
 {
 	struct spi_master *master;
@@ -1332,16 +1408,46 @@ static int fbtft_device_spi_device_register(struct spi_board_info *spi)
 	spi_devices[spi_device_count++] = spi_device;
 	return 0;
 }
+
+static int fbtft_device_i2c_device_register(struct i2c_board_info *i2c_info,
+					    int busnum)
+{
+	struct i2c_client *i2c_device;
+	struct i2c_adapter *i2c_adapter;
+
+	i2c_adapter = i2c_get_adapter(busnum);
+	if (!i2c_adapter) {
+		pr_err(DRVNAME ":  i2c_get_adapter(%d) returned NULL\n",
+				busnum);
+		return -EINVAL;
+	}
+	/* make sure it's available */
+	fbtft_device_i2c_delete(i2c_adapter, i2c_info->addr);
+	i2c_device = i2c_new_device(i2c_adapter, i2c_info);
+	put_device(&i2c_adapter->dev);
+	if (!i2c_device) {
+		pr_err(DRVNAME ":    i2c_new_device() returned NULL\n");
+		return -EPERM;
+	}
+	i2c_devices[i2c_device_count++] = i2c_device;
+	return 0;
+}
 #else
 static int fbtft_device_spi_device_register(struct spi_board_info *spi)
 {
 	return spi_register_board_info(spi, 1);
+}
+static int fbtft_device_i2c_device_register(struct i2c_board_info *i2c_info,
+					    int busnum)
+{
+	return i2c_register_board_info(busnum, i2c_info, 1);
 }
 #endif
 
 static int __init fbtft_device_init(void)
 {
 	struct spi_board_info *spi = NULL;
+	struct i2c_board_info *i2c = NULL;
 	struct fbtft_platform_data *pdata = NULL;
 	const struct fbtft_gpio *gpio = NULL;
 	char *p_gpio, *p_name, *p_num;
@@ -1409,6 +1515,9 @@ static int __init fbtft_device_init(void)
 	if (verbose > 2)
 		pr_p_devices(); /* print list of 'fb' platform devices */
 
+	if (verbose > 2)
+		pr_i2c_devices(); /* print list of 'i2c' platform devices */
+
 	pr_debug(DRVNAME":  name='%s', busnum=%d, cs=%d\n", name, busnum, cs);
 
 	if (rotate > 0 && rotate < 4) {
@@ -1468,6 +1577,8 @@ static int __init fbtft_device_init(void)
 				p_device = displays[i].pdev;
 				if (!displays[i].is_support)
 					pdata = p_device->dev.platform_data;
+			} else if (displays[i].i2c) {
+				i2c = displays[i].i2c;
 			} else {
 				pr_err(DRVNAME": broken displays array\n");
 				return -EINVAL;
@@ -1518,12 +1629,21 @@ static int __init fbtft_device_init(void)
 				}
 				if (!displays[i].is_support)
 					found = true;
-			} else {
+			} else if (p_device) {
 				ret = platform_device_register(p_device);
 				if (ret < 0) {
 					pr_err(DRVNAME \
 						":    platform_device_register() returned %d\n",
 						ret);
+					return ret;
+				}
+				if (!displays[i].is_support)
+					found = true;
+			} else if (displays[i].i2c) {
+				ret = fbtft_device_i2c_device_register(displays[i].i2c, displays[i].i2c_busnum);
+				if (ret) {
+					pr_err(DRVNAME \
+						": failed to register I2C device\n");
 					return ret;
 				}
 				if (!displays[i].is_support)
@@ -1555,6 +1675,8 @@ static int __init fbtft_device_init(void)
 		pr_spi_devices();
 	if (p_device && (verbose > 1))
 		pr_p_devices();
+	if (i2c_device_count && (verbose > 1))
+		pr_i2c_devices();
 
 	return 0;
 }
@@ -1568,6 +1690,14 @@ static void __exit fbtft_device_exit(void)
 		for (i = 0; i < spi_device_count; i++) {
 			device_del(&spi_devices[i]->dev);
 			kfree(spi_devices[i]);
+		}
+	}
+
+	if (i2c_device_count) {
+		int i;
+		for (i = 0; i < i2c_device_count; i++) {
+			device_del(&i2c_devices[i]->dev);
+			kfree(i2c_devices[i]);
 		}
 	}
 
