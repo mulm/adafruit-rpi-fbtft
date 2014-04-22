@@ -174,6 +174,7 @@ struct gpio_setting {
 
 struct fbtft_device_display {
 	char *name;
+	char *alias;
 	struct spi_board_info *spi;
 	struct i2c_board_info *i2c;
 	int i2c_busnum;
@@ -322,7 +323,8 @@ static struct fbtft_device_display displays[] = {
 		}
 	}, {
 		/* Touch device spi-half of adafruit touchscreen */
-		.name = "adafruitts",
+		.name = "adafruitrt28",
+		.alias = "adafruitts", /* legacy name */
 		.spi = &(struct spi_board_info) {
 			.modalias = "stmpe610",
 			.max_speed_hz = 500000,
@@ -357,7 +359,8 @@ static struct fbtft_device_display displays[] = {
 		.gpio_num_settings = 1,
 	}, {
 		/* LCD component of adafruit touchscreen */
-		.name = "adafruitts",
+		.name = "adafruitrt28",
+		.alias = "adafruitts", /* legacy name */
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ili9340",
 			.max_speed_hz = 16000000,
@@ -378,7 +381,7 @@ static struct fbtft_device_display displays[] = {
 	}, {
 
 		/* Touch device spi-half of adafruit touchscreen */
-		.name = "adafruitct",
+		.name = "adafruitct28",
 		.i2c = &(struct i2c_board_info) {
 			I2C_BOARD_INFO("ft6x06_ts", 0x38),
 			.platform_data = &(struct ft6x06_platform_data) {
@@ -397,7 +400,7 @@ static struct fbtft_device_display displays[] = {
 		.gpio_num_settings = 1,
 	}, {
 		/* LCD component of adafruit capacitive touchscreen */
-		.name = "adafruitct",
+		.name = "adafruitct28",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ili9340",
 			.max_speed_hz = 16000000,
@@ -1224,7 +1227,9 @@ static int __init fbtft_device_init(void)
 	gpio_reg = ioremap(GPIO_BASE, 1024);
 
 	for (i = 0; i < ARRAY_SIZE(displays); i++) {
-		if (strncmp(name, displays[i].name, 32) == 0) {
+		if (!strncmp(name, displays[i].name, 32)
+		|| (displays[i].alias
+			&& !strncmp(name, displays[i].alias, 32))) {
 			int j;
 			if (displays[i].spi) {
 				int dev_cs;
