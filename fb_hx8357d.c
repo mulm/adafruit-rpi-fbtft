@@ -29,14 +29,23 @@
 #include "fb_hx8357d.h"
 
 #define DRVNAME		"fb_hx8357d"
-#define WIDTH		480
-#define HEIGHT		320
+#define WIDTH		320
+#define HEIGHT		480
 #define DEFAULT_GAMMA	"0 0 0 0 0 0 0 0 0 0 0 0 0 0\n" \
 			"0 0 0 0 0 0 0 0 0 0 0 0 0 0"
 
 
+static u16 color565(u8 r, u8 g, u8 b) {
+	  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+
+static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye);
+
 static int init_display(struct fbtft_par *par)
 {
+	u16 *fb;
+	int i;
+
 	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
@@ -136,6 +145,18 @@ static int init_display(struct fbtft_par *par)
 	/* display on */
 	write_reg(par, HX8357_DISPON);
 	mdelay(50);
+
+	mdelay(250);
+	write_reg(par, HX8357_INVON);
+	mdelay(250);
+	write_reg(par, HX8357_INVOFF);
+	mdelay(250);
+
+	set_addr_win(par, 0, 0, WIDTH - 1, HEIGHT - 1);
+	fb = (u16 *)par->info->screen_base;
+	for (i = 0; i < WIDTH * HEIGHT; i++)
+		fb[i] = color565(0, 255, 0);
+	fbtft_write_vmem16_bus8(par, 0, WIDTH * HEIGHT);
 
 	return 0;
 }
