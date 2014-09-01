@@ -81,7 +81,7 @@ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
 	*buf = (u8)va_arg(args, unsigned int);
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, 0);
-	ret = par->fbtftops.write(par, par->buf, sizeof(u8));
+	ret = par->fbtftops.write(par, 1, par->buf, sizeof(u8));
 	if (ret < 0) {
 		va_end(args);
 		dev_err(par->info->device, "%s: write() failed and returned %d\n", __func__, ret);
@@ -94,7 +94,7 @@ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
 		while (i--) {
 			*buf++ = (u8)va_arg(args, unsigned int);
 		}
-		ret = par->fbtftops.write(par, par->buf, len * (sizeof(u8)));
+		ret = par->fbtftops.write(par, 1, par->buf, len * (sizeof(u8)));
 		if (ret < 0) {
 			va_end(args);
 			dev_err(par->info->device, "%s: write() failed and returned %d\n", __func__, ret);

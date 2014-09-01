@@ -129,7 +129,7 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 
 	/* Write data */
 	gpio_set_value(par->gpio.dc, 1);
-	ret = par->fbtftops.write(par, par->txbuf.buf, 6*84);
+	ret = par->fbtftops.write(par, 0, par->txbuf.buf, 6*84);
 	if (ret < 0)
 		dev_err(par->info->device, "%s: write failed and returned: %d\n", __func__, ret);
 

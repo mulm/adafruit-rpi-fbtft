@@ -82,8 +82,8 @@ struct fbtft_par;
  *     fbtft_framebuffer_alloc()
  */
 struct fbtft_ops {
-	int (*write)(struct fbtft_par *par, void *buf, size_t len);
-	int (*read)(struct fbtft_par *par, void *buf, size_t len);
+	int (*write)(struct fbtft_par *par, int is_command, void *buf, size_t len);
+	int (*read)(struct fbtft_par *par, int is_command, void *buf, size_t len);
 	int (*write_vmem)(struct fbtft_par *par, size_t offset, size_t len);
 	void (*write_register)(struct fbtft_par *par, int len, ...);
 
@@ -279,14 +279,18 @@ extern int fbtft_probe_common(struct fbtft_display *display,
 extern int fbtft_remove_common(struct device *dev, struct fb_info *info);
 
 /* fbtft-io.c */
-extern int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len);
-extern int fbtft_write_spi_emulate_9(struct fbtft_par *par,
-	void *buf, size_t len);
-extern int fbtft_read_spi(struct fbtft_par *par, void *buf, size_t len);
-extern int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len);
-extern int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len);
-extern int fbtft_write_gpio16_wr_latched(struct fbtft_par *par,
-	void *buf, size_t len);
+extern int fbtft_write_spi(struct fbtft_par *par, int is_command,
+		void *buf, size_t len);
+extern int fbtft_write_spi_emulate_9(struct fbtft_par *par, int is_command,
+		void *buf, size_t len);
+extern int fbtft_read_spi(struct fbtft_par *par, int is_command,
+		void *buf, size_t len);
+extern int fbtft_write_gpio8_wr(struct fbtft_par *par, int is_command,
+		void *buf, size_t len);
+extern int fbtft_write_gpio16_wr(struct fbtft_par *par, int is_command,
+		void *buf, size_t len);
+extern int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, int is_command,
+		void *buf, size_t len);
 
 /* fbtft-bus.c */
 extern int fbtft_write_vmem8_bus8(struct fbtft_par *par, size_t offset, size_t len);
