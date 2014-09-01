@@ -1,3 +1,4 @@
+#define DEBUG
 /*
  *
  * Copyright (C) 2013, Noralf Tronnes
@@ -1457,6 +1458,13 @@ static int fbtft_device_spi_device_register(struct spi_board_info *spi)
 	/* make sure it's available */
 	fbtft_device_spi_delete(master, spi->chip_select);
 	spi_device = spi_new_device(master, spi);
+
+	/* Sometimes parts come up as MODE_1 due to floating strapping pins */
+	if (!spi_device) {
+		spi->mode = SPI_MODE_1;
+		spi_device = spi_new_device(master, spi);
+	}
+
 	put_device(&master->dev);
 	if (!spi_device) {
 		pr_err(DRVNAME ":    spi_new_device() returned NULL\n");
