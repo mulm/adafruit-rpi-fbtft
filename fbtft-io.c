@@ -7,7 +7,8 @@
 #endif
 #include "fbtft.h"
 
-int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len)
+int fbtft_write_spi(struct fbtft_par *par, int is_command,
+		    void *buf, size_t len)
 {
 	struct spi_transfer t = {
 		.tx_buf = buf,
@@ -29,6 +30,10 @@ int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len)
 		t.tx_dma = par->txbuf.dma;
 		m.is_dma_mapped = 1;
 	}
+
+	if (is_command)
+		t.speed_hz = 1000000;
+
 	spi_message_add_tail(&t, &m);
 	return spi_sync(par->spi, &m);
 }
@@ -43,7 +48,8 @@ EXPORT_SYMBOL(fbtft_write_spi);
  * When 9-bit SPI is not available, this function can be used to emulate that.
  * par->extra must hold a transformation buffer used for transfer.
  */
-int fbtft_write_spi_emulate_9(struct fbtft_par *par, void *buf, size_t len)
+int fbtft_write_spi_emulate_9(struct fbtft_par *par, int is_command,
+			      void *buf, size_t len)
 {
 	u16 *src = buf;
 	u8 *dst = par->extra;
@@ -89,7 +95,7 @@ int fbtft_write_spi_emulate_9(struct fbtft_par *par, void *buf, size_t len)
 }
 EXPORT_SYMBOL(fbtft_write_spi_emulate_9);
 
-int fbtft_read_spi(struct fbtft_par *par, void *buf, size_t len)
+int fbtft_read_spi(struct fbtft_par *par, int is_command, void *buf, size_t len)
 {
 	int ret;
 	u8 txbuf[32] = { 0, };
@@ -146,7 +152,8 @@ do {                                  \
 		reset |= (1 << (no)); \
 } while (0)
 
-int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
+int fbtft_write_gpio8_wr(struct fbtft_par *par, int is_command,
+			 void *buf, size_t len)
 {
 	unsigned int set = 0;
 	unsigned int reset = 0;
@@ -184,7 +191,8 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
 }
 EXPORT_SYMBOL(fbtft_write_gpio8_wr);
 
-int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
+int fbtft_write_gpio16_wr(struct fbtft_par *par, int is_command,
+			  void *buf, size_t len)
 {
 	unsigned int set = 0;
 	unsigned int reset = 0;
@@ -234,7 +242,8 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 }
 EXPORT_SYMBOL(fbtft_write_gpio16_wr);
 
-int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)
+int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, int is_command,
+				  void *buf, size_t len)
 {
 	unsigned int set = 0;
 	unsigned int reset = 0;
@@ -298,7 +307,8 @@ EXPORT_SYMBOL(fbtft_write_gpio16_wr_latched);
  * Optimized use of gpiolib is twice as fast as no optimization
  * only one driver can use the optimized version at a time
  */
-int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
+int fbtft_write_gpio8_wr(struct fbtft_par *par, int is_command,
+			 void *buf, size_t len)
 {
 	u8 data;
 	int i;
@@ -348,7 +358,8 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
 }
 EXPORT_SYMBOL(fbtft_write_gpio8_wr);
 
-int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
+int fbtft_write_gpio16_wr(struct fbtft_par *par, int is_command,
+			  void *buf, size_t len)
 {
 	u16 data;
 	int i;
@@ -399,7 +410,8 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 }
 EXPORT_SYMBOL(fbtft_write_gpio16_wr);
 
-int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)
+int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, int is_command,
+				  void *buf, size_t len)
 {
 	dev_err(par->info->device, "%s: function not implemented\n", __func__);
 	return -1;

@@ -62,7 +62,7 @@ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
 	fbtft_par_dbg_hex(DEBUG_WRITE_REGISTER, par,
 		par->info->device, u8, par->buf, len, "%s: ", __func__);
 
-	ret = par->fbtftops.write(par, par->buf, len);
+	ret = par->fbtftops.write(par, 1, par->buf, len);
 	if (ret < 0) {
 		dev_err(par->info->device,
 			"%s: write() failed and returned %d\n", __func__, ret);
@@ -95,7 +95,7 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 		pos[1] = cpu_to_be16(i);
 		for (j = 0; j < par->info->var.xres; j++)
 			buf16[j] = cpu_to_be16(*vmem16++);
-		ret = par->fbtftops.write(par,
+		ret = par->fbtftops.write(par, 0,
 			par->txbuf.buf, 10 + par->info->fix.line_length);
 		if (ret < 0)
 			return ret;
@@ -136,7 +136,7 @@ static int write_vmem_8bit(struct fbtft_par *par, size_t offset, size_t len)
 			buf8[j] = RGB565toRGB332(*vmem16);
 			vmem16++;
 		}
-		ret = par->fbtftops.write(par,
+		ret = par->fbtftops.write(par, 0,
 			par->txbuf.buf, 10 + par->info->var.xres);
 		if (ret < 0)
 			return ret;
@@ -151,7 +151,7 @@ static unsigned firmware_version(struct fbtft_par *par)
 	u8 rxbuf[4] = {0, };
 
 	write_reg(par, CMD_VERSION);
-	par->fbtftops.read(par, rxbuf, 4);
+	par->fbtftops.read(par, 1, rxbuf, 4);
 	if (rxbuf[1] != '.')
 		return 0;
 

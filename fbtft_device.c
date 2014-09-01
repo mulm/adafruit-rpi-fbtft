@@ -194,7 +194,8 @@ struct fbtft_device_display {
 
 static void fbtft_device_pdev_release(struct device *dev);
 
-static int write_gpio16_wr_slow(struct fbtft_par *par, void *buf, size_t len);
+static int write_gpio16_wr_slow(struct fbtft_par *par, int is_gpio,
+				void *buf, size_t len);
 static void adafruit18_green_tab_set_addr_win(struct fbtft_par *par,
 	int xs, int ys, int xe, int ye);
 
@@ -962,7 +963,8 @@ static struct fbtft_device_display displays[] = {
 	}
 };
 
-static int write_gpio16_wr_slow(struct fbtft_par *par, void *buf, size_t len)
+static int write_gpio16_wr_slow(struct fbtft_par *par, int is_command,
+				void *buf, size_t len)
 {
 	u16 data;
 	int i;
