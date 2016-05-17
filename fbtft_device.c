@@ -413,6 +413,7 @@ static struct fbtft_device_display displays[] = {
 				.bgr = true,
 				.gpios = (const struct fbtft_gpio []) {
 					{ "dc", 25 },
+					{ "led", 18 },
 					{},
 				},
 			}
