@@ -507,7 +507,7 @@ static struct fbtft_device_display displays[] = {
 				.reset_gpio = -1,
 			},
 		},
-		.i2c_busnum = 1,
+		.i2c_busnum = 0,
 		.is_support = 1,
 		.gpio_settings = (struct gpio_setting []) {
 			{
@@ -532,6 +532,7 @@ static struct fbtft_device_display displays[] = {
 				.bgr = true,
 				.gpios = (const struct fbtft_gpio []) {
 					{ "dc", 25 },
+					{ "led", 18 },
 					{},
 				},
 			}
